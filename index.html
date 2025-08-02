@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Reminder Card</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --bg: #f0f4ff;
+      --card: #ffffff;
+      --text: #000;
+      --accent: #4B0082;
+    }
+    body.dark {
+      --bg: #1e1e1e;
+      --card: #2c2c2c;
+      --text: #eee;
+      --accent: #ffd700;
+    }
+    body.pastel {
+      --bg: #fff7fa;
+      --card: #ffe2ec;
+      --text: #6b3164;
+      --accent: #c71585;
+    }
+    body {
+      font-family: Calibri, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 40px 20px;
+      text-align: center;
+      transition: background 0.3s, color 0.3s;
+    }
+    main {
+      max-width: 600px;
+      margin: auto;
+      background: var(--card);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease, background 0.3s, color 0.3s;
+    }
+    body.theme-switch main {
+      transform: rotateY(360deg);
+    }
+    h1 {
+      font-family: 'Ink Free', cursive;
+      color: var(--accent);
+    }
+    label {
+      font-size: 1.1em;
+      display: block;
+      margin-top: 20px;
+    }
+    textarea, input[type="date"] {
+      width: 100%;
+      font-size: 1em;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      resize: none;
+    }
+    button {
+      padding: 10px 24px;
+      font-size: 1em;
+      margin: 10px 8px 0;
+      border: none;
+      border-radius: 6px;
+      background-color: gold;
+      cursor: pointer;
+    }
+    #qrcode {
+      margin: 30px auto 0;
+      width: fit-content;
+    }
+    #qrcode canvas {
+      animation: fadeIn 0.6s ease-in-out;
+    }
+    .theme-buttons {
+      margin-top: 20px;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: #888;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<main>
+  <h1>📌 Smart Reminder Card</h1>
+
+  <label for="reminderText">Reminder:</label>
+  <textarea id="reminderText" placeholder="Type or paste your reminder here..."></textarea>
+
+  <label for="dueDate">Due Date:</label>
+  <input type="date" id="dueDate" />
+
+  <button id="voiceInputBtn">🎤 Speak</button>
+  <button onclick="readAloud()">🔊 Read Aloud</button>
+  <button onclick="generateQR()">📷 Generate QR</button>
+  <button onclick="downloadQR()">📥 Download QR</button>
+
+  <div id="output" aria-live="polite" style="margin-top:10px;"></div>
+  <div id="qrcode" aria-label="QR code area"></div>
+
+  <div class="theme-buttons">
+    <p>🎨 Theme:</p>
+    <button onclick="setTheme('light')">Light</button>
+    <button onclick="setTheme('dark')">Dark</button>
+    <button onclick="setTheme('pastel')">Pastel</button>
+  </div>
+</main>
+
+<footer>Crafted with 💡 by Hairol@Koleksi77</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  const reminderText = document.getElementById("reminderText");
+  const dueDate = document.getElementById("dueDate");
+  const voiceInputBtn = document.getElementById("voiceInputBtn");
+  const outputDiv = document.getElementById("output");
+
+  function getFullMessage() {
+    const text = reminderText.value.trim();
+    const date = dueDate.value;
+    return text ? `Reminder: ${text}${date ? " | Due: " + date : ""}` : "";
+  }
+
+  function readAloud() {
+    const message = getFullMessage();
+    if (!message) return alert("Please enter your reminder.");
+    speak(message);
+  }
+
+  function speak(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    speechSynthesis.speak(utterance);
+  }
+
+  function generateQR() {
+    const message = getFullMessage();
+    if (!message) return alert("Please enter your reminder.");
+    const qr = document.getElementById("qrcode");
+    qr.innerHTML = "";
+    new QRCode(qr, {
+      text: message,
+      width: 160,
+      height: 160,
+      colorDark: "#000",
+      colorLight: "#fff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+
+  function downloadQR() {
+    const canvas = document.querySelector("#qrcode canvas");
+    if (!canvas) return alert("Please generate a QR code first.");
+    const link = document.createElement("a");
+    link.download = "reminder-qr.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }
+
+  function setTheme(theme) {
+    document.body.classList.add("theme-switch");
+    document.body.className = theme === "light" ? "" : theme;
+    setTimeout(() => {
+      document.body.classList.remove("theme-switch");
+    }, 300);
+  }
+
+  // Voice recognition (shared with dictation)
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+
+  voiceInputBtn.addEventListener("click", () => {
+    speak("I'm listening...");
+    recognition.start();
+  });
+
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    reminderText.value += transcript + " ";
+    outputDiv.textContent = `You said: ${transcript}`;
+    localStorage.setItem("lastVoiceInput", transcript);
+    speak(`Got it! You said: ${transcript}`);
+  };
+
+  recognition.onerror = (e) => {
+    console.error("Speech recognition error:", e.error);
+    speak("Oops, I didn't catch that.");
+  };
+
+  // LocalStorage
+  reminderText.addEventListener("input", () =>
+    localStorage.setItem("reminderText", reminderText.value)
+  );
+  dueDate.addEventListener("input", () =>
+    localStorage.setItem("reminderDate", dueDate.value)
+  );
+  window.onload = () => {
+    reminderText.value = localStorage.getItem("reminderText") || "";
+    dueDate.value = localStorage.getItem("reminderDate") || "";
+  };
+
+  // Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js');
+  }
+</script>
+
+</body>
+</html>
